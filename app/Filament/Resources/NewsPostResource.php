@@ -10,8 +10,14 @@ use App\Enums\NewsStatus;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
 use Filament\Resources\Resource;
+use Illuminate\Support\Collection;
+use Filament\Tables\Actions\BulkAction;
+use Filament\Notifications\Notification;
+use Filament\Tables\Columns\SelectColumn;
+use Filament\Tables\Actions\DeleteBulkAction;
 use App\Filament\Resources\NewsPostResource\Pages;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+
 
 class NewsPostResource extends Resource
 {
@@ -78,6 +84,12 @@ class NewsPostResource extends Resource
 
     public static function table(Table $table): Table
     {
+         // 🔹 On prépare une seule fois la liste des statuts possibles
+    $statusOptions = collect(\App\Enums\NewsStatus::cases())
+        ->mapWithKeys(fn (\App\Enums\NewsStatus $case) => [
+            $case->value => $case->label(),
+        ])
+        ->all();
         return $table->defaultSort('id', 'desc')->columns([
             Tables\Columns\TextColumn::make('id')->label('#')->sortable(),
             Tables\Columns\ImageColumn::make('cover_url')->label('Cover')->size(48)->circular(),
@@ -118,7 +130,15 @@ class NewsPostResource extends Resource
                 : \App\Enums\NewsStatus::tryFrom($state)
         ) === \App\Enums\NewsStatus::Archived,
         ]),
-
+// 🔽 Actif ou non (0 ou 1)
+            SelectColumn::make('status')
+                ->label('Actif ?')
+                ->options([
+                    1 => 'Actif',
+                    0 => 'Inactif'
+                ])
+                ->selectablePlaceholder(false)
+                ->sortable(),
             Tables\Columns\IconColumn::make('featured')->label('Une')->boolean(),
             Tables\Columns\TextColumn::make('published_at')->label('Publiée le')->dateTime('d/m/Y H:i')->sortable(),
             Tables\Columns\TextColumn::make('read_count')->label('Vues')->numeric()->sortable(),
@@ -132,7 +152,58 @@ class NewsPostResource extends Resource
             Tables\Actions\DeleteAction::make(),
             Tables\Actions\RestoreAction::make(),
             Tables\Actions\ForceDeleteAction::make(),
-        ]);
+        ])->bulkActions([
+                // 👉 Groupé : icône “…” dans la barre des actions de masse
+                Tables\Actions\BulkActionGroup::make([
+                    // 1️⃣ SUPPRESSION MULTIPLE
+                    DeleteBulkAction::make()
+                        ->label('Supprimer la sélection'),
+BulkAction::make('change_active_status')
+        ->label('Activer / Désactiver')
+        ->icon('heroicon-o-check-circle')
+        ->form([
+            Forms\Components\Select::make('status')
+                ->label('Nouveau statut')
+                ->options([
+                    1 => 'Actif',
+                    0 => 'Inactif'
+                ])
+                ->required(),
+        ])
+        ->action(function (array $data, Collection $records) {
+            foreach ($records as $record) {
+                $record->update([
+                    'status' => $data['status'],
+                ]);
+            }
+
+            Notification::make()
+                ->title('Mise à jour réussie')
+                ->body($records->count().' éléments activés/désactivés.')
+                ->success()
+                ->send();
+        })
+        ->deselectRecordsAfterCompletion(),
+                    // 2️⃣ CHANGER LE STATUT DE PLUSIEURS D’UN COUP
+                    BulkAction::make('change_status')
+                        ->label('Changer le statut')
+                        ->icon('heroicon-o-adjustments-horizontal')
+                        ->color('primary')
+                        ->form([
+                            Forms\Components\Select::make('news_status')
+                                ->label('Nouveau statut')
+                                ->options($statusOptions)
+                                ->required(),
+                        ])
+                        ->action(function (array $data, $records) {
+                            /** @var \Illuminate\Support\Collection $records */
+                            $records->each->update([
+                                'news_status' => $data['news_status'],
+                            ]);
+                        })
+                        ->deselectRecordsAfterCompletion(),
+                    ]),
+                    ]);
     }
 
     // Audit
