@@ -1,16 +1,21 @@
 <?php
 namespace App\Filament\Resources;
 
-use App\Enums\UserStatus;
-use App\Filament\Resources\ServiceResource\Pages;
-use App\Models\Service;
-use App\Models\User;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Models\User;
 use Filament\Tables;
+use App\Models\Service;
+use Filament\Forms\Form;
+use App\Enums\UserStatus;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use App\Enums\ShopOrderState;
+use Filament\Resources\Resource;
+use Illuminate\Support\Collection;
+use Filament\Tables\Actions\BulkAction;
+use Filament\Tables\Columns\SelectColumn;
+use Illuminate\Notifications\Notification;
+use App\Filament\Resources\ServiceResource\Pages;
 
 class ServiceResource extends Resource
 {
@@ -45,10 +50,20 @@ class ServiceResource extends Resource
 
     public static function table(Table $table): Table
     {
+
         return $table->defaultSort('id', 'desc')->columns([
             Tables\Columns\TextColumn::make('id')->label('#')->sortable(),
             Tables\Columns\TextColumn::make('name')->label('Nom')->searchable(),
             Tables\Columns\TextColumn::make('slug')->label('Slug')->toggleable(),
+            // 🔽 Statut 0/1 éditable dans la liste
+            SelectColumn::make('status')
+                ->label('Actif ?')
+                ->options([
+                    1 => 'Actif',
+                    0 => 'Inactif',
+                ])
+                ->selectablePlaceholder(false)
+                ->sortable(),
             Tables\Columns\TextColumn::make('manager.full_name')->label('Responsable'),
             Tables\Columns\BadgeColumn::make('status')
                 ->label('Statut')
@@ -85,4 +100,6 @@ class ServiceResource extends Resource
             'edit'   => Pages\EditService::route('/{record}/edit'),
         ];
     }
+
+
 }

@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Illuminate\Support\Collection;
 use Filament\Tables\Actions\BulkAction;
 use Filament\Notifications\Notification;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Actions\DeleteBulkAction;
 use App\Filament\Resources\NewsPostResource\Pages;
@@ -75,8 +76,23 @@ class NewsPostResource extends Resource
                         ->helperText('Lien si l’article renvoie vers une source externe.'),
                     Forms\Components\TextInput::make('location_name')->label('Lieu')->maxLength(191),
                     Forms\Components\TextInput::make('location_addr')->label('Adresse')->maxLength(255),
-                    Forms\Components\TextInput::make('category_id')->label('Catégorie (ID)')
-                        ->numeric()->helperText('Sélectionne la catégorie (à remplacer par un Select si tu as la table).'),
+                    // Forms\Components\TextInput::make('category_id')->label('Catégorie (ID)')
+                    //     ->numeric()->helperText('Sélectionne la catégorie (à remplacer par un Select si tu as la table).'),
+                    Forms\Components\Select::make('category_id')
+    ->label('Catégorie')
+    ->options(
+        \App\Models\MainCategory::query()
+            ->where('type', 'news_type')
+            ->where('status', 1)
+            ->orderBy('cat_name')
+            ->pluck('cat_name', 'id')
+            ->toArray()
+    )
+    ->searchable()
+    ->preload()
+    ->required()
+    ->helperText('Choisissez une catégorie active pour cette actualité.'),
+
                 ])->columnSpan(8),
             ]),
         ]);
@@ -84,6 +100,7 @@ class NewsPostResource extends Resource
 
     public static function table(Table $table): Table
     {
+
          // 🔹 On prépare une seule fois la liste des statuts possibles
     $statusOptions = collect(\App\Enums\NewsStatus::cases())
         ->mapWithKeys(fn (\App\Enums\NewsStatus $case) => [
@@ -92,7 +109,14 @@ class NewsPostResource extends Resource
         ->all();
         return $table->defaultSort('id', 'desc')->columns([
             Tables\Columns\TextColumn::make('id')->label('#')->sortable(),
-            Tables\Columns\ImageColumn::make('cover_url')->label('Cover')->size(48)->circular(),
+            // Tables\Columns\ImageColumn::make('cover_url')->label('Cover')->size(48)->circular(),
+            ImageColumn::make('cover_url')
+                ->label('Cover')
+                ->disk('s3')
+                 ->size(64)->visibility('private')
+                ->defaultImageUrl(asset('assets/images/avatar-default.png'))
+                ->size(60)
+                ->square(),
             Tables\Columns\TextColumn::make('title')->label('Titre')->searchable()->limit(40),
             Tables\Columns\BadgeColumn::make('news_status')
     ->label('Statut')

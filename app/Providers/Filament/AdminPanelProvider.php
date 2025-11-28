@@ -113,8 +113,9 @@ class AdminPanelProvider extends PanelProvider
             // ->withLogo(asset('assets/images/logo.png'), 'https://daloministries.com')
             ->withLoadTime('Cette page a été chargée dans')
                 ->withLinks([
-                    ['title' => 'A propos', 'url' => 'https://daloministries.com'],
-                    ['title' => 'Privacy Policy', 'url' => 'https://daloministries.com']
+                    ['title' => 'A propos', 'url' => 'https://daloministries.com/about'],
+                    ['title' => 'Privacy Policy', 'url' => 'https://daloministries.com/privacy-policy'],
+                    ['title' => 'Design by SDev', 'url' => 'https://silasmas.com'],
                 ])->withBorder(),
                   ]);
                 }
