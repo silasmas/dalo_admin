@@ -1,27 +1,23 @@
 <?php
 namespace App\Filament\Resources;
 
-use Filament\Forms;
-use App\Models\User;
-use Filament\Tables;
-use App\Support\S3Path;
-use Filament\Forms\Set;
-use Filament\Forms\Form;
-use Filament\Tables\Table;
-use Illuminate\Support\Str;
+use App\Filament\Resources\EdmVideoResource\Pages;
+use App\Filament\Resources\EdmVideoResource\Widgets\EdmVideoStats;
 use App\Models\Edm\EdmVideo;
-use Filament\Infolists\Infolist;
-use Filament\Resources\Resource;
-use Filament\Tables\Columns\TextColumn;
-use Illuminate\Support\Facades\Storage;
-use Filament\Tables\Columns\ImageColumn;
+use App\Models\User;
+use Filament\Forms;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Form;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Components\ImageEntry;
-use App\Filament\Resources\EdmVideoResource\Pages;
+use Filament\Infolists\Infolist;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Table;
+use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use App\Filament\Resources\EdmVideoResource\Widgets\EdmVideoStats;
 
 class EdmVideoResource extends Resource
 {
@@ -35,150 +31,157 @@ class EdmVideoResource extends Resource
     public static function form(Form $form): Form
     {
         return $form
-    ->schema([
-        // 1. Informations générales
-        Forms\Components\Section::make('Informations générales')
-            ->columns(2)
             ->schema([
-                Forms\Components\Grid::make(2)
+                // 1. Informations générales
+                Forms\Components\Section::make('Informations générales')
+                    ->columns(2)
                     ->schema([
-                        Forms\Components\Toggle::make('status')
-                            ->label('Actif ?')
-                            ->default(true)
-                            ->helperText('Si désactivé, la vidéo ne sera pas visible dans l’application.'),
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Toggle::make('status')
+                                    ->label('Actif ?')
+                                    ->default(true)
+                                    ->helperText('Si désactivé, la vidéo ne sera pas visible dans l’application.'),
 
-                        Forms\Components\Toggle::make('featured')
-                            ->label('Mise en avant ?')
-                            ->helperText('Permet de mettre la vidéo en avant sur la page d’accueil / carrousel.'),
+                                Forms\Components\Toggle::make('featured')
+                                    ->label('Mise en avant ?')
+                                    ->helperText('Permet de mettre la vidéo en avant sur la page d’accueil / carrousel.'),
 
-                        Forms\Components\TextInput::make('title')
-                            ->label('Titre')
-                            ->maxLength(255)
-                            ->required()
-                            ->helperText('Titre principal de la vidéo, affiché aux utilisateurs.'),
-                            Forms\Components\Textarea::make('description')
-                                ->label('Description')
-                                ->rows(3)
-                                ->columnSpanFull()
-                                ->helperText('Texte explicatif ou résumé de la vidéo (facultatif).'),
+                                Forms\Components\TextInput::make('title')
+                                    ->label('Titre')
+                                    ->maxLength(255)
+                                    ->required()
+                                    ->helperText('Titre principal de la vidéo, affiché aux utilisateurs.'),
+                                Forms\Components\Textarea::make('description')
+                                    ->label('Description')
+                                    ->rows(3)
+                                    ->columnSpanFull()
+                                    ->helperText('Texte explicatif ou résumé de la vidéo (facultatif).'),
+                            ]),
+
                     ]),
 
-            ]),
+                // 2. Auteur & catégorie
+                Forms\Components\Section::make('Auteur & catégorie')
+                    ->columns(2)
+                    ->schema([
+                        Forms\Components\Select::make('author_user_id')
+                            ->label('Auteur (utilisateur)')
+                            ->options(
+                                User::query()
+                                    ->orderBy('firstname')
+                                    ->pluck('firstname', 'id')
+                                    ->toArray()
+                            )
+                            ->searchable()
+                            ->placeholder('— Sélectionner un auteur —')
+                        // ->reactive()
+                        // ->afterStateUpdated(function ($state, Set $set) {
+                        //     $user = User::find($state);
+                        //     $set('author_name', $user?->firstname . ' ' . $user?->lastname);
+                        // })
+                            ->helperText('Choisissez l’utilisateur qui est à l’origine de cette vidéo.'),
 
-        // 2. Auteur & catégorie
-        Forms\Components\Section::make('Auteur & catégorie')
-            ->columns(2)
-            ->schema([
-                Forms\Components\Select::make('author_user_id')
-                    ->label('Auteur (utilisateur)')
-                    ->options(
-                        User::query()
-                            ->orderBy('firstname')
-                            ->pluck('firstname', 'id')
-                            ->toArray()
-                    )
-                    ->searchable()
-                    ->placeholder('— Sélectionner un auteur —')
-                    // ->reactive()
-                    // ->afterStateUpdated(function ($state, Set $set) {
-                    //     $user = User::find($state);
-                    //     $set('author_name', $user?->firstname . ' ' . $user?->lastname);
-                    // })
-                    ->helperText('Choisissez l’utilisateur qui est à l’origine de cette vidéo.'),
+                        Forms\Components\TextInput::make('author_name')
+                            ->label('Nom affiché')
+                            ->maxLength(191)
+                            ->helperText('Nom qui sera affiché publiquement (peut être différent du compte utilisateur).'),
+                        Forms\Components\Select::make('category_id')
+                            ->label('Catégorie')
+                            ->options(
+                                \App\Models\MainCategory::query()
+                                    ->where('type', 'edm_category')
+                                    ->where('status', 1)
+                                    ->orderBy('cat_name')
+                                    ->pluck('cat_name', 'id')
+                                    ->toArray()
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->helperText('Choisissez une catégorie active pour cette actualité.'),
+                    ]),
 
-                Forms\Components\TextInput::make('author_name')
-                    ->label('Nom affiché')
-                    ->maxLength(191)
-                    ->helperText('Nom qui sera affiché publiquement (peut être différent du compte utilisateur).'),
+                // 3. Média (vidéo + image de couverture)
+                Forms\Components\Section::make('Média')
+                    ->columns(2)
+                    ->schema([
+                        FileUpload::make('url_video')
+                            ->label('Vidéo')
+                            ->disk('s3')
+                            ->directory('videos')
+                            ->visibility('private') // ou 'public' selon ton usage
+                            ->acceptedFileTypes([
+                                'video/mp4', 'video/mpeg', 'video/quicktime',
+                            ])
+                            ->maxSize(102400) // 100 Mo
+                            ->preserveFilenames(false)
+                            ->getUploadedFileNameForStorageUsing(
+                                fn(TemporaryUploadedFile $file) =>
+                                Str::ulid() . '.' . $file->getClientOriginalExtension()
+                            )
+                            ->helperText('Téléverse la vidéo (mp4, mpeg ou quicktime). Taille max : 100 Mo.'),
 
-                Forms\Components\Select::make('category_id')
-                    ->label('Catégorie')
-                    ->relationship('categorie', 'cat_name')
-                    ->searchable()
-                    ->required()
-                    ->helperText('Choisissez la catégorie dans laquelle sera classée cette vidéo.'),
-            ]),
+                        FileUpload::make('cover_url')
+                            ->label('Image de couverture')
+                            ->disk('s3')
+                            ->directory('edm/covers')
+                            ->visibility('private') // ou 'public'
+                            ->image()
+                            ->imageEditor()
+                            ->maxSize(4096) // 4 Mo
+                            ->preserveFilenames(false)
+                            ->getUploadedFileNameForStorageUsing(
+                                fn(TemporaryUploadedFile $file) =>
+                                Str::ulid() . '.' . $file->getClientOriginalExtension()
+                            )
+                            ->helperText('Image qui sera affichée en vignette de la vidéo (max 4 Mo).'),
+                    ]),
 
-        // 3. Média (vidéo + image de couverture)
-        Forms\Components\Section::make('Média')
-            ->columns(2)
-            ->schema([
-                FileUpload::make('url_video')
-                    ->label('Vidéo')
-                    ->disk('s3')
-                    ->directory('videos')
-                    ->visibility('private')  // ou 'public' selon ton usage
-                    ->acceptedFileTypes([
-                        'video/mp4', 'video/mpeg', 'video/quicktime',
-                    ])
-                    ->maxSize(102400) // 100 Mo
-                    ->preserveFilenames(false)
-                    ->getUploadedFileNameForStorageUsing(
-                        fn (TemporaryUploadedFile $file) =>
-                            Str::ulid() . '.' . $file->getClientOriginalExtension()
-                    )
-                    ->helperText('Téléverse la vidéo (mp4, mpeg ou quicktime). Taille max : 100 Mo.'),
+                // 4. Métadonnées
+                Forms\Components\Section::make('Métadonnées')
+                    ->columns(3)
+                    ->schema([
+                        Forms\Components\TextInput::make('duration_sec')
+                            ->label('Durée (sec)')
+                            ->numeric()
+                            ->helperText('Durée totale de la vidéo en secondes (facultatif, peut être calculé par script).'),
 
-                FileUpload::make('cover_url')
-                    ->label('Image de couverture')
-                    ->disk('s3')
-                    ->directory('edm/covers')
-                    ->visibility('private')  // ou 'public'
-                    ->image()
-                    ->imageEditor()
-                    ->maxSize(4096) // 4 Mo
-                    ->preserveFilenames(false)
-                    ->getUploadedFileNameForStorageUsing(
-                        fn (TemporaryUploadedFile $file) =>
-                            Str::ulid() . '.' . $file->getClientOriginalExtension()
-                    )
-                    ->helperText('Image qui sera affichée en vignette de la vidéo (max 4 Mo).'),
-            ]),
+                        Forms\Components\DateTimePicker::make('published_at')
+                            ->label('Date de publication')
+                            ->seconds(false)
+                            ->helperText('Date/heure à laquelle la vidéo est considérée comme publiée.'),
 
-        // 4. Métadonnées
-        Forms\Components\Section::make('Métadonnées')
-            ->columns(3)
-            ->schema([
-                Forms\Components\TextInput::make('duration_sec')
-                    ->label('Durée (sec)')
-                    ->numeric()
-                    ->helperText('Durée totale de la vidéo en secondes (facultatif, peut être calculé par script).'),
+                        Forms\Components\TagsInput::make('hashtags_json')
+                            ->label('Hashtags')
+                            ->helperText('Mots-clés pour faciliter la recherche. Ex : #foi, #jesus, #edifiemoi'),
+                    ]),
 
-                Forms\Components\DateTimePicker::make('published_at')
-                    ->label('Date de publication')
-                    ->seconds(false)
-                    ->helperText('Date/heure à laquelle la vidéo est considérée comme publiée.'),
+                // 5. Statistiques (lecture seule)
+                Forms\Components\Section::make('Statistiques')
+                    ->columns(4)
+                    ->schema([
+                        Forms\Components\TextInput::make('likes_count')
+                            ->label('Likes')
+                            ->disabled()
+                            ->helperText('Nombre total de likes reçus.'),
 
-                Forms\Components\TagsInput::make('hashtags_json')
-                    ->label('Hashtags')
-                    ->helperText('Mots-clés pour faciliter la recherche. Ex : #foi, #jesus, #edifiemoi'),
-            ]),
+                        Forms\Components\TextInput::make('favorites_count')
+                            ->label('Favoris')
+                            ->disabled()
+                            ->helperText('Nombre d’utilisateurs ayant ajouté la vidéo en favori.'),
 
-        // 5. Statistiques (lecture seule)
-        Forms\Components\Section::make('Statistiques')
-            ->columns(4)
-            ->schema([
-                Forms\Components\TextInput::make('likes_count')
-                    ->label('Likes')
-                    ->disabled()
-                    ->helperText('Nombre total de likes reçus.'),
+                        Forms\Components\TextInput::make('comments_count')
+                            ->label('Commentaires')
+                            ->disabled()
+                            ->helperText('Nombre de commentaires liés à cette vidéo.'),
 
-                Forms\Components\TextInput::make('favorites_count')
-                    ->label('Favoris')
-                    ->disabled()
-                    ->helperText('Nombre d’utilisateurs ayant ajouté la vidéo en favori.'),
-
-                Forms\Components\TextInput::make('comments_count')
-                    ->label('Commentaires')
-                    ->disabled()
-                    ->helperText('Nombre de commentaires liés à cette vidéo.'),
-
-                Forms\Components\TextInput::make('shares_count')
-                    ->label('Partages')
-                    ->disabled()
-                    ->helperText('Nombre de fois où la vidéo a été partagée.'),
-            ]),
-    ]);
+                        Forms\Components\TextInput::make('shares_count')
+                            ->label('Partages')
+                            ->disabled()
+                            ->helperText('Nombre de fois où la vidéo a été partagée.'),
+                    ]),
+            ]);
 
     }
 
@@ -186,12 +189,12 @@ class EdmVideoResource extends Resource
     {
         return $table
             ->columns([
-               ImageColumn::make('cover_url')
-                ->label('Couverture')
-                ->disk('s3')      // ⬅️ Filament va faire Storage::disk('s3')->url($state)
-                ->size(64)
-                ->circular()->visibility('private')
-                ->defaultImageUrl(asset('assets/images/avatar-default.png')),
+                ImageColumn::make('cover_url')
+                    ->label('Couverture')
+                    ->disk('s3') // ⬅️ Filament va faire Storage::disk('s3')->url($state)
+                    ->size(64)
+                    ->circular()->visibility('private')
+                    ->defaultImageUrl(asset('assets/images/avatar-default.png')),
                 Tables\Columns\TextColumn::make('title')
                     ->label('Titre')
                     ->searchable()
@@ -290,32 +293,32 @@ class EdmVideoResource extends Resource
         ];
     }
     public static function infolist(Infolist $infolist): Infolist
-{
-    return $infolist
-        ->schema([
-            Section::make('Informations générales')
-                ->schema([
-                    TextEntry::make('title')->label('Titre'),
-                    TextEntry::make('description')->label('Description'),
-                ])
-                ->columns(2),
+    {
+        return $infolist
+            ->schema([
+                Section::make('Informations générales')
+                    ->schema([
+                        TextEntry::make('title')->label('Titre'),
+                        TextEntry::make('description')->label('Description'),
+                    ])
+                    ->columns(2),
 
-            Section::make('Média')
-                ->schema([
-                    ImageEntry::make('cover_url')
-                        ->label('Couverture')
-                        ->disk('s3')
-                        ->height(200)
-                        ->visible(fn ($record) => !empty($record->cover_url)),
+                Section::make('Média')
+                    ->schema([
+                        ImageEntry::make('cover_url')
+                            ->label('Couverture')
+                            ->disk('s3')
+                            ->height(200)
+                            ->visible(fn($record) => ! empty($record->cover_url)),
 
-                    TextEntry::make('url_video')
-                        ->label('Vidéo')
-                        ->formatStateUsing(fn ($state) => basename($state)),
-                ])
-                ->columns(2),
-        ]);
-}
- public static function getNavigationBadge(): ?string
+                        TextEntry::make('url_video')
+                            ->label('Vidéo')
+                            ->formatStateUsing(fn($state) => basename($state)),
+                    ])
+                    ->columns(2),
+            ]);
+    }
+    public static function getNavigationBadge(): ?string
     {
         $count = EdmVideo::query()->where('status', 1)->count(); // vidéos actives
         return $count > 0 ? (string) $count : null;
@@ -325,7 +328,7 @@ class EdmVideoResource extends Resource
     {
         return 'primary';
     }
-     public static function getHeaderWidgets(): array
+    public static function getHeaderWidgets(): array
     {
         return [
             EdmVideoStats::class,
