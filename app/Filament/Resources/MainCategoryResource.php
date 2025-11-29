@@ -62,7 +62,7 @@ class MainCategoryResource extends Resource
                                     $set('cat_key', Str::slug($state));
                                 }
                             })
-                            ->helperText('Nom lisible de la catégorie. Le slug sera généré automatiquement.');
+                            ->helperText('Nom lisible de la catégorie. Le slug sera généré automatiquement.'),
 
                         Forms\Components\TextInput::make('cat_key')
                             ->label('Clé (slug interne)')
