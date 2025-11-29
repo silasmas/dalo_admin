@@ -67,7 +67,14 @@
     "extra": {
         "laravel": {
             "dont-discover": []
+        },
+        "heroku": {
+        "php": {
+            "config": {
+                "php.ini": "php.ini"
+            }
         }
+    }
     },
     "config": {
         "optimize-autoloader": true,
