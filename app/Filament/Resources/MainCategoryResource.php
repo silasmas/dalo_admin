@@ -56,13 +56,13 @@ class MainCategoryResource extends Resource
                             ->label('Nom de la catégorie')
                             ->maxLength(191)
                             ->required()
-                            ->reactive()
+                            ->lazy() // ⬅️ Met à jour seulement quand tu quittes le champ
                             ->afterStateUpdated(function ($state, Set $set) {
                                 if (! empty($state)) {
                                     $set('cat_key', Str::slug($state));
                                 }
                             })
-                            ->helperText('Nom lisible de la catégorie. Le slug sera généré automatiquement.'),
+                            ->helperText('Nom lisible de la catégorie. Le slug sera généré automatiquement.');
 
                         Forms\Components\TextInput::make('cat_key')
                             ->label('Clé (slug interne)')
