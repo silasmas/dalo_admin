@@ -1,23 +1,26 @@
 <?php
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\EdmVideoResource\Pages;
-use App\Filament\Resources\EdmVideoResource\Widgets\EdmVideoStats;
-use App\Models\Edm\EdmVideo;
-use App\Models\User;
 use Filament\Forms;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Form;
-use Filament\Infolists\Components\ImageEntry;
-use Filament\Infolists\Components\Section;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Infolist;
-use Filament\Resources\Resource;
+use App\Models\User;
 use Filament\Tables;
-use Filament\Tables\Columns\ImageColumn;
+use App\Support\S3Path;
+use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use App\Models\Edm\EdmVideo;
+use Filament\Infolists\Infolist;
+use Filament\Resources\Resource;
+use Filament\Tables\Columns\TextColumn;
+use Illuminate\Support\Facades\Storage;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Forms\Components\FileUpload;
+use Filament\Infolists\Components\Section;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ImageEntry;
+use App\Filament\Resources\EdmVideoResource\Pages;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use App\Filament\Resources\EdmVideoResource\Widgets\EdmVideoStats;
 
 class EdmVideoResource extends Resource
 {
@@ -187,13 +190,15 @@ class EdmVideoResource extends Resource
 
     public static function table(Table $table): Table
     {
+        // dd(Storage::disk('s3')->url('edm/covers/01KB6Y0KTFHVEWSWXW9DSW23W4.jpeg'));
         return $table
-            ->columns([
+        ->columns([
                 ImageColumn::make('cover_url')
                     ->label('Couverture')
                     ->disk('s3') // ⬅️ Filament va faire Storage::disk('s3')->url($state)
                     ->size(64)
-                    ->circular()->visibility('private')
+                    ->circular()
+                   ->url(fn ($record) => Storage::disk('s3')->url($record->cover_url))
                     ->defaultImageUrl(asset('assets/images/avatar-default.png')),
                 Tables\Columns\TextColumn::make('title')
                     ->label('Titre')
@@ -204,13 +209,13 @@ class EdmVideoResource extends Resource
                     ->formatStateUsing(fn() => '▶️ Voir')
                     ->url(fn($record) => $record->video_url_full)
                     ->openUrlInNewTab(),
-                // TextColumn::make('video_link')
-                //     ->label('Vidéo')
-                //     ->formatStateUsing(fn() => '▶️ Voir')
-                //     ->url(fn($record) => S3Path::urlFromKey(
-                //         S3Path::keyFromDb($record->url_video)
-                //     ))
-                //     ->openUrlInNewTab(),
+                TextColumn::make('video_link')
+                    ->label('Vidéo')
+                    ->formatStateUsing(fn() => '▶️ Voir')
+                    ->url(fn($record) => S3Path::urlFromKey(
+                        S3Path::keyFromDb($record->url_video)
+                    ))
+                    ->openUrlInNewTab(),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Statut')
                     ->formatStateUsing(fn($state) => $state ? 'Actif' : 'Inactif')
